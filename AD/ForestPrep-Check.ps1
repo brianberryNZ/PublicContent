@@ -90,7 +90,7 @@ function ADReplMetaData {
 
 # Check and log more AD replication info from the forest, but each server is queried for its "Version of the truth"
 function DCReplication {
-    $DCs = Get-ADDomainController -filter * | Select-Object HostName
+  $DCs = Get-ADDomainController -filter * | Select-Object HostName
     foreach ($DCServer in $DCs) {
         $Vector = Get-ADReplicationUpToDatenessVectorTable -Scope Forest | Select-Object LastReplicationSuccess, Partition, Partner, Server, UsnFilter # This can take a while to run for the forest
         $ReplFail = Get-ADReplicationFailure -Target $DCServer -Scope Server | Select-Object FailureCount, FailureType, Partner, LastError
