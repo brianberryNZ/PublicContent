@@ -59,7 +59,7 @@ Import-Module ActiveDirectory
 
 # Check and log the Schema version (objectVersion), Forest Update version (Revision) and Domain Update version (Revision)
 function ForestCheck {
-  $ADSIDom = Get-ADRootDSE | Select-Object rootDomainNamingContext, forestFunctionality, domainControllerFunctionality
+  $ADSIDom = Get-ADRootDSE | Select-Object rootDomainNamingContext, forestFunctionality, domainFunctionality
   $SchemaPath = "AD:\CN=Schema,CN=Configuration,$($ADSIDom.rootDomainNamingContext)"
   $ForestUPath = "AD:\CN=ActiveDirectoryUpdate,CN=DomainUpdates,CN=System,$($ADSIDom.rootDomainNamingContext)"
   $DomainUPath = "AD:\CN=ActiveDirectoryUpdate,CN=ForestUpdates,CN=Configuration,$($ADSIDom.rootDomainNamingContext)"
