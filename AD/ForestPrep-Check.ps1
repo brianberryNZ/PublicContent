@@ -90,6 +90,7 @@ function ADReplMetaData {
 
 # Check and log more AD replication info from the forest, but each server is queried for its "Version of the truth"
 function DCReplication {
+  $Date = Get-Date -Format "dd/MM/yyyy HH:mm:ss"
   $DCs = Get-ADDomainController -filter * | Select-Object HostName
     foreach ($DCServer in $DCs) {
         $Vector = Get-ADReplicationUpToDatenessVectorTable -Scope Forest | Select-Object LastReplicationSuccess, Partition, Partner, Server, UsnFilter # This can take a while to run for the forest
@@ -98,10 +99,10 @@ function DCReplication {
         if ($Null -eq $ReplFail) {
           Set-Variable ReplFail -Value "There were no replication failures detected."
           Write-Host -ForegroundColor DarkGreen -BackgroundColor White "$($ReplFail)"
-          $ReplFail | Out-File -FilePath $($LogFilePath + "\" + $DCServer.HostName + "_ForestReplFailures.csv")
+          $ReplFail | Out-File -FilePath $($LogFilePath + "\" + $DCServer.HostName + $Date + "_ForestReplFailures.csv")
         }
         else {
-          $ReplFail | Export-CSV -Path $($LogFilePath + "\" + $DCServer.HostName + "_ForestReplFailures.csv") -Append -NoTypeInformation
+          $ReplFail | Export-CSV -Path $($LogFilePath + "\" + $DCServer.HostName + $Date + "_ForestReplFailures.csv") -Append -NoTypeInformation
         }
 
         $Vector | Export-CSV -Path $($LogFilePath + "\" + $DCServer.HostName + "_ForestVectorTable.csv") -Append -NoTypeInformation
