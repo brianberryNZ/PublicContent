@@ -96,8 +96,7 @@ function DCReplication {
         $ReplFail = Get-ADReplicationFailure -Target $DCServer -Scope Server | Select-Object FailureCount, FailureType, Partner, LastError
         # $Vector | Get-member -MemberType NoteProperty | Select-Object -ExpandProperty Name | Out-File -FilePath $($LogFilePath + "\" + $DCServer.HostName + "_ForestVectorTable.csv") -Append
         if ($Null -eq $ReplFail) {
-          Set-Variable ReplFail -Value "There were no replication failures detected."
-          Write-Host -ForegroundColor DarkGreen -BackgroundColor White "$($ReplFail)"
+          Write-Host -ForegroundColor DarkGreen -BackgroundColor White "There were no replication failures detected."
           $ReplFail | Out-File -FilePath $($LogFilePath + "\" + $DCServer.HostName + "_ForestReplFailures.csv")
         }
         else {
