@@ -56,6 +56,7 @@ Param (
 )
 
 Import-Module ActiveDirectory
+$ErrorLog = $($LogFilePath + "\" + "ErrorLog.csv")
 
 # Check and log the Schema version (objectVersion), Forest Update version (Revision) and Domain Update version (Revision)
 function ForestCheck {
@@ -75,7 +76,7 @@ function ForestCheck {
       "Forest Version" = $ForestUpdate.Revision
       "Domain Version" = $DomainUpdate.Revision
       "Forest Function" = $ADSIDom.forestFunctionality
-      "Domain Function" = $ADSIDom.domainControllerFunctionality
+      "Domain Function" = $ADSIDom.domainFunctionality
       "Date" = Get-Date -Format "dd/MM/yyyy HH:mm:ss"
   }
   $NewRow | Out-File -FilePath $($LogFilePath + "\" + "ForestUpdateInfo.csv") -Append
@@ -83,27 +84,47 @@ function ForestCheck {
 
 # Check and log the replication status of all domain controllers in the domain. Note! need to run this for each target domain.
 function ADReplMetaData {
-        $Meta = Get-ADReplicationPartnerMetadata -Target $DomainName -scope Domain -PartnerType Both -Partition * | Select-Object Server, Partner, LastReplicationAttempt, LastReplicationResult, LastReplicationSuccess, Partition, PartnerType, ConsecutiveReplicationFailures
+  Try{
+        $Meta = Get-ADReplicationPartnerMetadata -Target $DomainName -scope Domain -PartnerType Both -Partition *  -ErrorAction Stop | Select-Object Server, Partner, LastReplicationAttempt, LastReplicationResult, LastReplicationSuccess, Partition, PartnerType, ConsecutiveReplicationFailures
         # Get-ADReplicationPartnerMetadata -target $Server -scope server | Where-Object {$_.lastreplicationresult -ne "0"} | Select-Object server,lastreplicationattempt,lastreplicationresult,partner
         $Meta | Export-CSV -Path $($LogFilePath + "\" + "ADReplMetaData.csv") -Append -NoTypeInformation
+  }
+  catch {
+    $_ | Out-File -FilePath $ErrorLog -Append
+  }
 }
 
 # Check and log more AD replication info from the forest, but each server is queried for its "Version of the truth"
 function DCReplication {
   $DCs = Get-ADDomainController -filter * | Select-Object HostName
     foreach ($DCServer in $DCs) {
-        $Vector = Get-ADReplicationUpToDatenessVectorTable -Scope Forest | Select-Object LastReplicationSuccess, Partition, Partner, Server, UsnFilter # This can take a while to run for the forest
-        $ReplFail = Get-ADReplicationFailure -Target $DCServer -Scope Server | Select-Object FailureCount, FailureType, Partner, LastError
-        # $Vector | Get-member -MemberType NoteProperty | Select-Object -ExpandProperty Name | Out-File -FilePath $($LogFilePath + "\" + $DCServer.HostName + "_ForestVectorTable.csv") -Append
+      try {          
+        $ReplFail = Get-ADReplicationFailure -Target $DCServer -Scope Server  -ErrorAction Stop | Select-Object FailureCount, FailureType, Partner, LastError
         if ($Null -eq $ReplFail) {
           Write-Host -ForegroundColor DarkGreen -BackgroundColor White "There were no replication failures detected."
-          $ReplFail | Out-File -FilePath $($LogFilePath + "\" + $DCServer.HostName + "_ForestReplFailures.csv")
+        }
+        if ($_ -eq $True) {
+          Write-Host -ForegroundColor Red -BackgroundColor White "Some servers can't be contacted"
         }
         else {
           $ReplFail | Export-CSV -Path $($LogFilePath + "\" + $DCServer.HostName + "_ForestReplFailures.csv") -Append -NoTypeInformation -Force
         }
-
-        $Vector | Export-CSV -Path $($LogFilePath + "\" + $DCServer.HostName + "_ForestVectorTable.csv") -Append -NoTypeInformation
+      }
+      catch {
+        $_ | Out-File -FilePath $ErrorLog -Append
+      }
+      try {
+        $Vector = Get-ADReplicationUpToDatenessVectorTable -Scope Forest  -ErrorAction Stop | Select-Object LastReplicationSuccess, Partition, Partner, Server, UsnFilter # This can take a while to run for the forest
+        if ($Null -eq $Vector) {
+          Write-Host -ForegroundColor Red -BackgroundColor White "Some servers can't be contacted"
+        }
+        else {
+          $Vector | Export-CSV -Path $($LogFilePath + "\" + $DCServer.HostName + "_ForestVectorTable.csv") -Append -NoTypeInformation
+        }
+      }
+      catch {
+        $_ | Out-File -FilePath $ErrorLog -Append
+      }
     }
 }
 
